@@ -1023,6 +1023,25 @@
         border-left: 4px solid var(--success);
     }
     
+    .quick-sell-options {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .quick-sell-btn {
+        padding: 8px 15px;
+        border: none;
+        border-radius: 4px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    
     /* Mobile Responsive Styles */
     @media (max-width: 1100px) {
         .main-content {
@@ -1126,6 +1145,10 @@
         }
         
         .scanner-controls {
+            flex-direction: column;
+        }
+        
+        .quick-sell-options {
             flex-direction: column;
         }
     }
