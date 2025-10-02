@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
     <link rel="stylesheet" href="style.css">
-  
+   
 </head>
 <body>
     <!-- Authentication Section -->
@@ -120,6 +120,15 @@
                             <i class="fas fa-plus"></i> Add Product
                         </button>
                     </h2>
+                    
+                    <!-- Search Bar -->
+                    <div class="search-container">
+                        <input type="text" class="search-bar" id="product-search" placeholder="Search products by name or barcode...">
+                        <i class="fas fa-search search-icon"></i>
+                        <div class="search-results" id="search-results">
+                            <!-- Search results will appear here -->
+                        </div>
+                    </div>
                     
                     <div class="category-tabs">
                         <div class="category-tab active" data-category="all">All Products</div>
@@ -441,7 +450,7 @@
     <div class="notification" id="notification">
         Product added successfully!
     </div>
-
-  <script src="index.js"></script>
+   <script src="index.js"></script>
+ 
 </body>
 </html>
