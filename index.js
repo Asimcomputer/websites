@@ -76,6 +76,10 @@
     const barcodeScanner = document.getElementById('barcode-scanner');
     const generateBarcodeBtn = document.getElementById('generate-barcode-btn');
     
+    // Search elements
+    const productSearch = document.getElementById('product-search');
+    const searchResults = document.getElementById('search-results');
+    
     // Format currency to Pakistani Rupees
     function formatCurrency(amount) {
         return `<span class="currency">Rs</span>${amount.toFixed(2)}`;
@@ -346,6 +350,84 @@
         generateBarcodeBtn.addEventListener('click', () => {
             document.getElementById('product-barcode').value = generateBarcode();
         });
+        
+        // Search functionality
+        productSearch.addEventListener('input', handleSearch);
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-container')) {
+                searchResults.classList.remove('active');
+            }
+        });
+    }
+    
+    // Handle search functionality
+    function handleSearch() {
+        const query = productSearch.value.trim().toLowerCase();
+        
+        if (query.length === 0) {
+            searchResults.classList.remove('active');
+            return;
+        }
+        
+        // Filter products by name or barcode
+        const filteredProducts = products.filter(product => 
+            product.name.toLowerCase().includes(query) || 
+            (product.barcode && product.barcode.toLowerCase().includes(query))
+        );
+        
+        // Display search results
+        displaySearchResults(filteredProducts);
+    }
+    
+    // Display search results
+    function displaySearchResults(results) {
+        searchResults.innerHTML = '';
+        
+        if (results.length === 0) {
+            searchResults.innerHTML = '<div class="search-result-item">No products found</div>';
+        } else {
+            results.forEach(product => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'search-result-item';
+                resultItem.innerHTML = `
+                    <div class="search-result-info">
+                        <div class="search-result-name">${product.name}</div>
+                        <div class="search-result-details">
+                            ${product.category} | ${formatCurrency(product.price)} | Stock: ${product.totalUnits}
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" style="padding: 5px 10px; font-size: 0.8rem;" data-id="${product.id}">
+                        <i class="fas fa-cash-register"></i> Sell
+                    </button>
+                `;
+                
+                // Add event listener to sell button
+                const sellBtn = resultItem.querySelector('.btn');
+                sellBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const productToSell = products.find(p => p.id === product.id);
+                    if (productToSell) {
+                        openSellModal(productToSell);
+                        searchResults.classList.remove('active');
+                        productSearch.value = '';
+                    }
+                });
+                
+                // Add event listener to select product
+                resultItem.addEventListener('click', () => {
+                    const productToSell = products.find(p => p.id === product.id);
+                    if (productToSell) {
+                        openSellModal(productToSell);
+                        searchResults.classList.remove('active');
+                        productSearch.value = '';
+                    }
+                });
+                
+                searchResults.appendChild(resultItem);
+            });
+        }
+        
+        searchResults.classList.add('active');
     }
     
     // Barcode Scanner Functions
