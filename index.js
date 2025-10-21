@@ -8,6 +8,10 @@
     // Sales data
     let sales = [];
     
+    // Cart data
+    let cart = [];
+    let cartTotal = 0;
+    
     // Track product to sell or edit stock
     let currentProductForSale = null;
     let currentProductForStockEdit = null;
@@ -80,6 +84,16 @@
     const productSearch = document.getElementById('product-search');
     const searchResults = document.getElementById('search-results');
     
+    // Cart elements
+    const cartItemsEl = document.getElementById('cart-items');
+    const cartSubtotalEl = document.getElementById('cart-subtotal');
+    const cartDiscountEl = document.getElementById('cart-discount');
+    const cartFinalTotalEl = document.getElementById('cart-final-total');
+    const cartTotalEl = document.getElementById('cart-total');
+    const clearCartBtn = document.getElementById('clear-cart-btn');
+    const checkoutBtn = document.getElementById('checkout-btn');
+    const cartSummaryEl = document.getElementById('cart-summary');
+    
     // Format currency to Pakistani Rupees
     function formatCurrency(amount) {
         return `<span class="currency">Rs</span>${amount.toFixed(2)}`;
@@ -90,6 +104,12 @@
         const prefix = 'PK';
         const randomNum = Math.floor(1000000000 + Math.random() * 9000000000);
         return prefix + randomNum;
+    }
+    
+    // Get cart quantity for a product
+    function getCartQuantity(productId) {
+        const item = cart.find(item => item.product.id === productId);
+        return item ? item.quantity : 0;
     }
     
     // Initialize the POS system
@@ -264,10 +284,17 @@
             sales = JSON.parse(savedSales);
         }
         
+        // Load cart from localStorage if available
+        const savedCart = localStorage.getItem('posCart');
+        if (savedCart) {
+            cart = JSON.parse(savedCart);
+        }
+        
         // Render products and inventory
         renderProducts(products);
         updateInventoryDisplay();
         updateSalesDisplay();
+        updateCartDisplay();
         
         // Set up event listeners
         setupAppEventListeners();
@@ -358,6 +385,258 @@
                 searchResults.classList.remove('active');
             }
         });
+        
+        // Cart functionality
+        setupCartListeners();
+    }
+    
+    // Cart Functions
+    function setupCartListeners() {
+        clearCartBtn.addEventListener('click', clearCart);
+        checkoutBtn.addEventListener('click', checkoutCart);
+    }
+    
+    function addToCart(product, quantity = 1) {
+        const existingItem = cart.find(item => item.product.id === product.id);
+        
+        if (existingItem) {
+            existingItem.quantity += quantity;
+        } else {
+            cart.push({
+                product: product,
+                quantity: quantity,
+                price: product.price
+            });
+        }
+        
+        saveCart();
+        updateCartDisplay();
+        showNotification(`${quantity} ${product.name} added to cart`);
+    }
+    
+    function removeFromCart(productId) {
+        cart = cart.filter(item => item.product.id !== productId);
+        saveCart();
+        updateCartDisplay();
+    }
+    
+    function updateCartQuantity(productId, newQuantity) {
+        const item = cart.find(item => item.product.id === productId);
+        if (item) {
+            if (newQuantity <= 0) {
+                removeFromCart(productId);
+            } else {
+                item.quantity = newQuantity;
+            }
+            saveCart();
+            updateCartDisplay();
+        }
+    }
+    
+    function clearCart() {
+        if (cart.length === 0) return;
+        
+        showConfirmation(
+            "Are you sure you want to clear the cart?",
+            () => {
+                cart = [];
+                saveCart();
+                updateCartDisplay();
+                showNotification('Cart cleared', 'error');
+            }
+        );
+    }
+    
+    function calculateCartTotals() {
+        let subtotal = 0;
+        
+        cart.forEach(item => {
+            subtotal += item.product.price * item.quantity;
+        });
+        
+        // For now, no discount on cart - can be extended later
+        const discount = 0;
+        const total = subtotal - discount;
+        
+        return { subtotal, discount, total };
+    }
+    
+    function updateCartDisplay() {
+        const totals = calculateCartTotals();
+        cartTotal = totals.total;
+        
+        // Update cart items
+        if (cart.length === 0) {
+            cartItemsEl.innerHTML = `
+                <div class="empty-cart">
+                    <i class="fas fa-shopping-cart"></i>
+                    <p>Your cart is empty</p>
+                    <p>Add products from the products section</p>
+                </div>
+            `;
+            cartSummaryEl.style.display = 'none';
+        } else {
+            cartItemsEl.innerHTML = '';
+            cart.forEach(item => {
+                const itemTotal = item.product.price * item.quantity;
+                const cartItem = document.createElement('div');
+                cartItem.className = 'cart-item';
+                cartItem.innerHTML = `
+                    <div class="cart-item-info">
+                        <div class="cart-item-name">${item.product.name}</div>
+                        <div class="cart-item-details">
+                            <span>${formatCurrency(item.product.price)} each</span>
+                            <span>Stock: ${item.product.totalUnits}</span>
+                        </div>
+                    </div>
+                    <div class="cart-item-controls">
+                        <div class="quantity-controls">
+                            <button class="quantity-btn decrease" data-id="${item.product.id}">-</button>
+                            <span class="quantity-display">${item.quantity}</span>
+                            <button class="quantity-btn increase" data-id="${item.product.id}">+</button>
+                        </div>
+                        <div class="cart-item-price">${formatCurrency(itemTotal)}</div>
+                        <button class="remove-item" data-id="${item.product.id}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+                cartItemsEl.appendChild(cartItem);
+            });
+            
+            // Update summary
+            cartSubtotalEl.textContent = formatCurrency(totals.subtotal);
+            cartDiscountEl.textContent = `-${formatCurrency(totals.discount)}`;
+            cartFinalTotalEl.textContent = formatCurrency(totals.total);
+            cartTotalEl.textContent = formatCurrency(totals.total);
+            
+            cartSummaryEl.style.display = 'block';
+        }
+        
+        // Add event listeners to cart controls
+        addCartEventListeners();
+    }
+    
+    function addCartEventListeners() {
+        // Quantity decrease buttons
+        document.querySelectorAll('.quantity-btn.decrease').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const productId = parseInt(e.target.getAttribute('data-id'));
+                const item = cart.find(item => item.product.id === productId);
+                if (item && item.quantity > 1) {
+                    updateCartQuantity(productId, item.quantity - 1);
+                }
+            });
+        });
+        
+        // Quantity increase buttons
+        document.querySelectorAll('.quantity-btn.increase').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const productId = parseInt(e.target.getAttribute('data-id'));
+                const item = cart.find(item => item.product.id === productId);
+                if (item) {
+                    // Check stock availability
+                    if (item.quantity < item.product.totalUnits) {
+                        updateCartQuantity(productId, item.quantity + 1);
+                    } else {
+                        showNotification(`Only ${item.product.totalUnits} units available for ${item.product.name}`, 'error');
+                    }
+                }
+            });
+        });
+        
+        // Remove item buttons
+        document.querySelectorAll('.remove-item').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const productId = parseInt(e.target.closest('.remove-item').getAttribute('data-id'));
+                removeFromCart(productId);
+            });
+        });
+    }
+    
+    function checkoutCart() {
+        if (cart.length === 0) {
+            showNotification('Cart is empty', 'error');
+            return;
+        }
+        
+        // Check stock availability for all items
+        for (const item of cart) {
+            if (item.quantity > item.product.totalUnits) {
+                showNotification(`Only ${item.product.totalUnits} units available for ${item.product.name}`, 'error');
+                return;
+            }
+        }
+        
+        showConfirmation(
+            `Process ${cart.length} items for ${formatCurrency(cartTotal)}?`,
+            processCheckout
+        );
+    }
+    
+    function processCheckout() {
+        let totalRevenue = 0;
+        let totalProfit = 0;
+        
+        // Process each item in cart
+        cart.forEach(item => {
+            const product = products.find(p => p.id === item.product.id);
+            if (product) {
+                // Update stock
+                product.totalUnits -= item.quantity;
+                
+                // Calculate sale details
+                const costPrice = product.costPrice || 0;
+                const sellingPrice = product.price;
+                const subtotal = sellingPrice * item.quantity;
+                const profit = (sellingPrice - costPrice) * item.quantity;
+                
+                totalRevenue += subtotal;
+                totalProfit += profit;
+                
+                // Create sale record
+                const sale = {
+                    id: Date.now() + Math.random(), // Unique ID
+                    timestamp: new Date().toLocaleString(),
+                    product: {
+                        id: product.id,
+                        name: product.name,
+                        price: product.price,
+                        costPrice: costPrice
+                    },
+                    quantity: item.quantity,
+                    subtotal: subtotal,
+                    discount: 0,
+                    discountType: 'fixed',
+                    total: subtotal,
+                    profit: profit
+                };
+                
+                // Add to sales history
+                sales.unshift(sale);
+            }
+        });
+        
+        // Save data
+        saveProducts();
+        saveSales();
+        
+        // Show success message
+        showNotification(`Checkout completed! ${cart.length} items sold for ${formatCurrency(totalRevenue)}`);
+        
+        // Clear cart
+        cart = [];
+        saveCart();
+        updateCartDisplay();
+        
+        // Update displays
+        renderProducts(products);
+        updateInventoryDisplay();
+        updateSalesDisplay();
+    }
+    
+    function saveCart() {
+        localStorage.setItem('posCart', JSON.stringify(cart));
     }
     
     // Handle search functionality
@@ -566,17 +845,22 @@
         if (product) {
             currentScannedProduct = product;
             
-            // Product found
+            // Product found - Automatically add to cart
+            addToCart(product, 1);
+            
+            // Update scanner result display
             scannerResult.innerHTML = `
                 <p><strong>Barcode Scanned:</strong> ${barcode}</p>
+                <p style="color: var(--success);"><i class="fas fa-check-circle"></i> ${product.name} added to cart!</p>
             `;
             
             scannedProductInfo.style.display = 'block';
             scannedProductInfo.innerHTML = `
-                <h4>Product Found:</h4>
+                <h4>Product Added to Cart:</h4>
                 <p><strong>Name:</strong> ${product.name}</p>
                 <p><strong>Price:</strong> ${formatCurrency(product.price)}</p>
                 <p><strong>Stock:</strong> ${product.totalUnits} units</p>
+                <p><strong>In Cart:</strong> ${getCartQuantity(product.id)} units</p>
                 <div class="quick-sell-options">
                     <button class="quick-sell-btn" style="background: var(--primary); color: white;" id="sell-one-unit">
                         <i class="fas fa-cash-register"></i> Sell 1 Unit
@@ -586,6 +870,9 @@
                     </button>
                     <button class="quick-sell-btn" style="background: var(--warning); color: white;" id="open-details">
                         <i class="fas fa-info-circle"></i> Product Details
+                    </button>
+                    <button class="quick-sell-btn" style="background: var(--secondary); color: white;" id="add-another-to-cart">
+                        <i class="fas fa-cart-plus"></i> Add Another
                     </button>
                 </div>
             `;
@@ -604,7 +891,11 @@
                 stopBarcodeScanner();
             });
             
-            showNotification(`Product found: ${product.name}`);
+            document.getElementById('add-another-to-cart').addEventListener('click', () => {
+                addToCart(product, 1);
+            });
+            
+            showNotification(`${product.name} automatically added to cart!`);
             
         } else {
             // Product not found
@@ -898,6 +1189,9 @@
                     <button class="action-btn sell-btn" data-id="${product.id}">
                         <i class="fas fa-cash-register"></i> Sell Product
                     </button>
+                    <button class="action-btn add-to-cart-btn" data-id="${product.id}">
+                        <i class="fas fa-cart-plus"></i> Add to Cart
+                    </button>
                 </div>
             `;
             
@@ -905,6 +1199,7 @@
             const stockBtn = productCard.querySelector('.stock-btn');
             const deleteBtn = productCard.querySelector('.delete-btn');
             const sellBtn = productCard.querySelector('.sell-btn');
+            const addToCartBtn = productCard.querySelector('.add-to-cart-btn');
             
             stockBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -919,6 +1214,11 @@
             sellBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 openSellModal(product);
+            });
+            
+            addToCartBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                addToCart(product);
             });
             
             productsGrid.appendChild(productCard);
