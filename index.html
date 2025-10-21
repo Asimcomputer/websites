@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
     <link rel="stylesheet" href="style.css">
-   
 </head>
 <body>
     <!-- Authentication Section -->
@@ -173,6 +172,44 @@
                         <button class="btn btn-outline" id="view-all-sales-btn">
                             <i class="fas fa-history"></i> View All Sales
                         </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Shopping Cart Section -->
+            <div class="cart-section">
+                <h2 class="section-title">
+                    <span><i class="fas fa-shopping-cart"></i> Shopping Cart</span>
+                    <div class="cart-controls">
+                        <button class="btn btn-outline" id="clear-cart-btn">
+                            <i class="fas fa-trash"></i> Clear Cart
+                        </button>
+                        <button class="btn btn-success" id="checkout-btn">
+                            <i class="fas fa-cash-register"></i> Checkout (<span id="cart-total">Rs0.00</span>)
+                        </button>
+                    </div>
+                </h2>
+                
+                <div class="cart-items" id="cart-items">
+                    <div class="empty-cart">
+                        <i class="fas fa-shopping-cart"></i>
+                        <p>Your cart is empty</p>
+                        <p>Add products from the products section</p>
+                    </div>
+                </div>
+                
+                <div class="cart-summary" id="cart-summary" style="display: none;">
+                    <div class="summary-row">
+                        <span>Subtotal:</span>
+                        <span id="cart-subtotal">Rs0.00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Discount:</span>
+                        <span id="cart-discount">-Rs0.00</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span>Total:</span>
+                        <span id="cart-final-total">Rs0.00</span>
                     </div>
                 </div>
             </div>
@@ -450,7 +487,7 @@
     <div class="notification" id="notification">
         Product added successfully!
     </div>
-   <script src="index.js"></script>
- 
+
+  <script src="index.js"></script>
 </body>
 </html>
